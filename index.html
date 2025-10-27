@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forex Session Tracker</title>
+    <style>
+        body {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100%;
+            color: #333;
+        }
+
+        html {
+            height: 100%;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .current-time {
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+            color: white;
+            backdrop-filter: blur(10px);
+        }
+
+        .session-indicators {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .session-card {
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .session-card.active {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            transform: scale(1.05);
+            box-shadow: 0 12px 40px rgba(76, 175, 80, 0.3);
+        }
+
+        .session-card.active .session-name {
+            color: white;
+        }
+
+        .session-card.active .session-time {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .session-card.weekend {
+            background: #95a5a6;
+            color: white;
+            opacity: 0.6;
+        }
+
+        .pair-card.weekend {
+            opacity: 0.6;
+            background: #374151;
+            border-color: #4b5563;
+        }
+
+        .market-closed {
+            color: #ef4444 !important;
+        }
+
+        .market-open {
+            color: #10b981 !important;
+        }
+
+        .session-name {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #1e293b;
+        }
+
+        .session-time {
+            font-size: 0.95rem;
+            color: #475569;
+            font-weight: 500;
+        }
+
+        .pairs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            gap: 24px;
+        }
+
+        .pair-card {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 28px;
+            border: 1px solid #334155;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .pair-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: #64748b;
+            transition: all 0.3s ease;
+        }
+
+        .pair-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            border-color: #475569;
+        }
+
+        .pair-card.optimal {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border-color: #10b981;
+            box-shadow: 0 8px 32px rgba(16, 185, 129, 0.15);
+        }
+
+        .pair-card.optimal::before {
+            background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+            width: 5px;
+        }
+
+        .pair-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #f8fafc;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            letter-spacing: -0.025em;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #64748b;
+            border: 2px solid #475569;
+            transition: all 0.3s ease;
+        }
+
+        .status-indicator.active {
+            background: #10b981;
+            border-color: #34d399;
+            box-shadow: 0 0 16px rgba(16, 185, 129, 0.6);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .best-session {
+            background: #0f172a;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 0;
+            border: 1px solid #1e293b;
+            position: relative;
+        }
+
+        .session-label {
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-bottom: 8px;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .session-times {
+            color: #3b82f6;
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+
+        .reason {
+            color: #94a3b8;
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 8px;
+            background: #1e293b;
+            border-radius: 16px;
+            border: 1px solid #334155;
+        }
+
+        .filter-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            background: transparent;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 500;
+            font-size: 0.875rem;
+            position: relative;
+        }
+
+        .filter-btn:hover {
+            color: #e2e8f0;
+            background: #334155;
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .pairs-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .session-indicators {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-left">
+                <h1>📊 Forex Session Tracker</h1>
+                <p>Professional trading session analysis for major currency pairs</p>
+            </div>
+            <div class="current-time">
+                <div style="font-size: 0.75rem; color: rgba(255,255,255,0.8); margin-bottom: 4px;">BANGLADESH TIME</div>
+                <div id="currentTime" style="font-size: 1.125rem; font-weight: 600;"></div>
+                <div id="marketStatus" style="margin-top: 8px; font-size: 0.875rem; font-weight: 600;"></div>
+            </div>
+        </header>
+
+        <div class="session-indicators">
+            <div class="session-card" id="sydney-session">
+                <div class="session-name">Sydney</div>
+                <div class="session-time">4:00 AM - 1:00 PM BD</div>
+            </div>
+            <div class="session-card" id="tokyo-session">
+                <div class="session-name">Tokyo</div>
+                <div class="session-time">5:00 AM - 2:00 PM BD</div>
+            </div>
+            <div class="session-card" id="london-session">
+                <div class="session-name">London</div>
+                <div class="session-time">2:00 PM - 11:00 PM BD</div>
+            </div>
+            <div class="session-card" id="newyork-session">
+                <div class="session-name">New York</div>
+                <div class="session-time">7:00 PM - 4:00 AM BD</div>
+            </div>
+        </div>
+
+        <div class="filter-buttons">
+            <button class="filter-btn active" onclick="filterPairs('all')">All Pairs</button>
+            <button class="filter-btn" onclick="filterPairs('active')">Active Now</button>
+            <button class="filter-btn" onclick="filterPairs('major')">Major Pairs</button>
+            <button class="filter-btn" onclick="filterPairs('cross')">Cross Pairs</button>
+        </div>
+
+        <div class="pairs-grid" id="pairsGrid">
+            <!-- Pairs will be populated by JavaScript -->
+        </div>
+    </div>
+
+    <script>
+        const forexPairs = [
+            {
+                pair: 'EURUSD',
+                sessions: 'London + New York overlap (2 PM – 8 PM BD time)',
+                reason: 'Heavy volume; both EUR and USD active, clean structure and strong moves.',
+                startHour: 14,
+                endHour: 20,
+                type: 'major'
+            },
+            {
+                pair: 'GBPUSD',
+                sessions: 'London + New York (2 PM – 9 PM BD time)',
+                reason: 'Big volatility; smart money plays happen often here.',
+                startHour: 14,
+                endHour: 21,
+                type: 'major'
+            },
+            {
+                pair: 'USDJPY',
+                sessions: 'Tokyo + New York (5 AM – 11 AM & 7 PM – 4 AM BD time)',
+                reason: 'Yen active in Asia, USD in NY. Great for session reversals.',
+                startHour: 5,
+                endHour: 11,
+                startHour2: 19,
+                endHour2: 4,
+                type: 'major'
+            },
+            {
+                pair: 'USDCHF',
+                sessions: 'London + New York (2 PM – 8 PM BD time)',
+                reason: 'Mirrors EURUSD inversely, moves cleanly during overlap.',
+                startHour: 14,
+                endHour: 20,
+                type: 'major'
+            },
+            {
+                pair: 'USDCAD',
+                sessions: 'New York (7 PM – 2 AM BD time)',
+                reason: 'Canada and U.S. sessions align; reacts to oil and U.S. data.',
+                startHour: 19,
+                endHour: 2,
+                type: 'major'
+            },
+            {
+                pair: 'AUDUSD',
+                sessions: 'Sydney + Tokyo (4 AM – 12 PM BD time)',
+                reason: 'Aussie moves early in Asia; cleaner structure than London hours.',
+                startHour: 4,
+                endHour: 12,
+                type: 'major'
+            },
+            {
+                pair: 'NZDUSD',
+                sessions: 'Sydney + Tokyo (4 AM – 11 AM BD time)',
+                reason: 'Active during Asia; smooth volatility, good for SMC patience setups.',
+                startHour: 4,
+                endHour: 11,
+                type: 'major'
+            },
+            {
+                pair: 'EURGBP',
+                sessions: 'London (2 PM – 7 PM BD time)',
+                reason: 'Both European currencies, very technical pair.',
+                startHour: 14,
+                endHour: 19,
+                type: 'cross'
+            },
+            {
+                pair: 'EURJPY',
+                sessions: 'Tokyo + London (5 AM – 3 PM BD time)',
+                reason: 'Active in both regions; good trending pair.',
+                startHour: 5,
+                endHour: 15,
+                type: 'cross'
+            },
+            {
+                pair: 'GBPJPY',
+                sessions: 'London + New York (2 PM – 9 PM BD time)',
+                reason: 'The "Beast" — large moves, ideal for stop hunts and BOS setups.',
+                startHour: 14,
+                endHour: 21,
+                type: 'cross'
+            }
+        ];
+
+        function updateTime() {
+            const now = new Date();
+            const bdTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Dhaka"}));
+            const timeString = bdTime.toLocaleString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            });
+            document.getElementById('currentTime').textContent = timeString;
+            
+            const dayOfWeek = bdTime.getDay(); // 0 = Sunday, 6 = Saturday
+            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+            
+            updateMarketStatus(isWeekend);
+            updateSessionStatus(bdTime.getHours(), isWeekend);
+            updatePairStatus(bdTime.getHours(), isWeekend);
+        }
+
+        function updateMarketStatus(isWeekend) {
+            const statusElement = document.getElementById('marketStatus');
+            if (isWeekend) {
+                statusElement.textContent = '🔴 Market Closed (Weekend)';
+                statusElement.className = 'market-closed';
+            } else {
+                statusElement.textContent = '🟢 Market Open';
+                statusElement.className = 'market-open';
+            }
+        }
+
+        function updateSessionStatus(currentHour, isWeekend) {
+            const sessions = ['sydney-session', 'tokyo-session', 'london-session', 'newyork-session'];
+            
+            sessions.forEach(sessionId => {
+                const sessionElement = document.getElementById(sessionId);
+                sessionElement.classList.toggle('weekend', isWeekend);
+                
+                if (isWeekend) {
+                    sessionElement.classList.remove('active');
+                    return;
+                }
+            });
+
+            if (!isWeekend) {
+                // Sydney: 4 AM - 1 PM
+                const sydneyActive = (currentHour >= 4 && currentHour < 13);
+                document.getElementById('sydney-session').classList.toggle('active', sydneyActive);
+                
+                // Tokyo: 5 AM - 2 PM
+                const tokyoActive = (currentHour >= 5 && currentHour < 14);
+                document.getElementById('tokyo-session').classList.toggle('active', tokyoActive);
+                
+                // London: 2 PM - 11 PM
+                const londonActive = (currentHour >= 14 && currentHour < 23);
+                document.getElementById('london-session').classList.toggle('active', londonActive);
+                
+                // New York: 7 PM - 4 AM (next day)
+                const newYorkActive = (currentHour >= 19 || currentHour < 4);
+                document.getElementById('newyork-session').classList.toggle('active', newYorkActive);
+            }
+        }
+
+        function isOptimalTime(pair, currentHour) {
+            if (pair.startHour2 && pair.endHour2) {
+                // Handle pairs with two time ranges (like USDJPY)
+                const inFirstRange = pair.endHour > pair.startHour ? 
+                    (currentHour >= pair.startHour && currentHour < pair.endHour) :
+                    (currentHour >= pair.startHour || currentHour < pair.endHour);
+                
+                const inSecondRange = pair.endHour2 > pair.startHour2 ? 
+                    (currentHour >= pair.startHour2 && currentHour < pair.endHour2) :
+                    (currentHour >= pair.startHour2 || currentHour < pair.endHour2);
+                
+                return inFirstRange || inSecondRange;
+            } else {
+                // Handle pairs with single time range
+                if (pair.endHour > pair.startHour) {
+                    return currentHour >= pair.startHour && currentHour < pair.endHour;
+                } else {
+                    // Crosses midnight
+                    return currentHour >= pair.startHour || currentHour < pair.endHour;
+                }
+            }
+        }
+
+        function updatePairStatus(currentHour, isWeekend) {
+            forexPairs.forEach((pair, index) => {
+                const pairCard = document.querySelector(`[data-pair="${pair.pair}"]`);
+                if (pairCard) {
+                    pairCard.classList.toggle('weekend', isWeekend);
+                    
+                    if (isWeekend) {
+                        pairCard.classList.remove('optimal');
+                        const indicator = pairCard.querySelector('.status-indicator');
+                        indicator.classList.remove('active');
+                    } else {
+                        const isOptimal = isOptimalTime(pair, currentHour);
+                        pairCard.classList.toggle('optimal', isOptimal);
+                        
+                        const indicator = pairCard.querySelector('.status-indicator');
+                        indicator.classList.toggle('active', isOptimal);
+                    }
+                }
+            });
+        }
+
+        function renderPairs(pairsToShow = forexPairs) {
+            const grid = document.getElementById('pairsGrid');
+            grid.innerHTML = pairsToShow.map(pair => `
+                <div class="pair-card" data-pair="${pair.pair}" data-type="${pair.type}">
+                    <div class="pair-name">
+                        <span class="status-indicator"></span>
+                        ${pair.pair}
+                    </div>
+                    <div class="best-session">
+                        <div class="session-label">Best Trading Session</div>
+                        <div class="session-times">${pair.sessions}</div>
+                        <div class="reason">${pair.reason}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filterPairs(filter) {
+            // Update active button
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            let filteredPairs = forexPairs;
+            const currentHour = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Dhaka"})).getHours();
+            
+            switch(filter) {
+                case 'active':
+                    filteredPairs = forexPairs.filter(pair => isOptimalTime(pair, currentHour));
+                    break;
+                case 'major':
+                    filteredPairs = forexPairs.filter(pair => pair.type === 'major');
+                    break;
+                case 'cross':
+                    filteredPairs = forexPairs.filter(pair => pair.type === 'cross');
+                    break;
+                default:
+                    filteredPairs = forexPairs;
+            }
+            
+            renderPairs(filteredPairs);
+            const now = new Date();
+            const bdTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Dhaka"}));
+            const dayOfWeek = bdTime.getDay();
+            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+            updatePairStatus(currentHour, isWeekend);
+        }
+
+        // Initialize the app
+        renderPairs();
+        updateTime();
+        setInterval(updateTime, 1000);
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9941846ba4f5dae3',t:'MTc2MTM5MzI0Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
